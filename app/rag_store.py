@@ -1,59 +1,83 @@
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+
+import re
+from collections import Counter
+
+
+def tokenize(text):
+    text = text.lower()
+    words = re.findall(r"\b[a-zA-Z0-9]+\b", text)
+    stopwords = {
+        "the", "is", "are", "a", "an", "and", "or", "to", "of", "in", "for",
+        "on", "with", "by", "as", "at", "from", "this", "that", "it", "be",
+        "can", "will", "shall", "may", "your", "you", "we", "our"
+    }
+    return [word for word in words if word not in stopwords and len(word) > 2]
 
 
 class SimpleRAGStore:
+    """
+    Lightweight in-memory retrieval store.
+    Uses keyword overlap scoring instead of heavy embeddings.
+    Works on Render free 512MB RAM.
+    """
+
     def __init__(self):
-        self.model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         self.documents = {}
 
     def add_document(self, document_id, file_name, chunks):
-        texts = [chunk["text"] for chunk in chunks]
+        processed_chunks = []
 
-        if not texts:
-            self.documents[document_id] = {
-                "file_name": file_name,
-                "chunks": [],
-                "embeddings": None
-            }
-            return
+        for chunk in chunks:
+            tokens = tokenize(chunk["text"])
+            token_counts = Counter(tokens)
 
-        embeddings = self.model.encode(texts, convert_to_numpy=True)
+            processed_chunks.append({
+                **chunk,
+                "tokens": tokens,
+                "token_counts": token_counts
+            })
 
         self.documents[document_id] = {
             "file_name": file_name,
-            "chunks": chunks,
-            "embeddings": embeddings
+            "chunks": processed_chunks
         }
 
     def search(self, document_id, query, top_k=4):
         if document_id not in self.documents:
             return []
 
-        doc = self.documents[document_id]
+        query_tokens = tokenize(query)
 
-        if doc["embeddings"] is None or len(doc["chunks"]) == 0:
+        if not query_tokens:
             return []
 
-        query_embedding = self.model.encode([query], convert_to_numpy=True)
-        scores = cosine_similarity(query_embedding, doc["embeddings"])[0]
-        top_indices = np.argsort(scores)[::-1][:top_k]
-
+        query_counts = Counter(query_tokens)
         results = []
 
-        for idx in top_indices:
-            chunk = doc["chunks"][idx]
+        for chunk in self.documents[document_id]["chunks"]:
+            chunk_counts = chunk["token_counts"]
 
-            results.append({
-                "chunk_id": chunk["chunk_id"],
-                "page_number": chunk["page_number"],
-                "text": chunk["text"],
-                "score": float(scores[idx]),
-                "file_name": doc["file_name"]
-            })
+            overlap_score = 0
 
-        return results
+            for token, count in query_counts.items():
+                if token in chunk_counts:
+                    overlap_score += min(count, chunk_counts[token])
+
+            # Normalize score
+            score = overlap_score / max(len(query_tokens), 1)
+
+            if score > 0:
+                results.append({
+                    "chunk_id": chunk["chunk_id"],
+                    "page_number": chunk["page_number"],
+                    "text": chunk["text"],
+                    "score": float(score),
+                    "file_name": self.documents[document_id]["file_name"]
+                })
+
+        results.sort(key=lambda item: item["score"], reverse=True)
+
+        return results[:top_k]
 
 
 rag_store = SimpleRAGStore()

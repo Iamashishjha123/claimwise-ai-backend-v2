@@ -4,6 +4,3 @@ python-multipart
 PyMuPDF
 python-dotenv
 pydantic
-sentence-transformers
-scikit-learn
-numpy

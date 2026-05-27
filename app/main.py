@@ -222,7 +222,7 @@ def ask_question(request: AskRequest):
         ]
     )
 
-    if best_score < 0.25:
+    if best_score < 0.10:
         return {
             "status": "low_confidence",
             "answer": "I could not find strong evidence for this in the uploaded document. Please review the cited pages or ask a more specific question.",
