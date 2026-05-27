@@ -1,4 +1,3 @@
-cat > requirements.txt <<'EOF'
 fastapi
 uvicorn
 python-multipart
@@ -8,4 +7,3 @@ pydantic
 sentence-transformers
 scikit-learn
 numpy
-EOF
