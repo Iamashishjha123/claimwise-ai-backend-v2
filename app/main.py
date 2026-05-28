@@ -247,17 +247,17 @@ def ask_question(request: AskRequest):
     question_lower = request.question.lower()
 
     if "grace period" in question_lower and "premium" in question_lower:
-    clean_answer = (
-        "The grace period for paying premiums is thirty-one (31) days after the premium due date. "
-        "If the premium is still unpaid at the end of the grace period, the policy automatically terminates. "
-        "If the Designated Life Insured dies during the grace period before the premium is paid, "
-        "the outstanding premium is deducted from the Death Benefit."
+        clean_answer = (
+            "The grace period for paying premiums is thirty-one (31) days after the premium due date. "
+            "If the premium is still unpaid at the end of the grace period, the policy automatically terminates. "
+            "If the Designated Life Insured dies during the grace period before the premium is paid, "
+            "the outstanding premium is deducted from the Death Benefit."
     )
     else:
-    clean_answer = (
-        "Based on the uploaded document, the most relevant section says:\n\n"
-        f"{top_evidence}\n\n"
-        "Please review the cited page for full context."
+        clean_answer = (
+            "Based on the uploaded document, the most relevant section says:\n\n"
+            f"{top_evidence}\n\n"
+            "Please review the cited page for full context."
     )
 
     return {
