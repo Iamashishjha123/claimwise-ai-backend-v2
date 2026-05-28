@@ -173,7 +173,6 @@ async def upload_pdf(file: UploadFile = File(...)):
             detail=f"Something went wrong while processing the PDF: {str(error)}"
         )
 
-
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
 
@@ -194,7 +193,8 @@ def ask_question(request: AskRequest):
             "status": "not_found",
             "answer": (
                 "I could not find relevant information in the uploaded document. "
-                "Try asking with words that appear in the document, such as premium, death benefit, grace period, conversion, exchange, beneficiary, or cancellation."
+                "Try asking with words that appear in the document, such as premium, death benefit, "
+                "grace period, conversion, exchange, beneficiary, or cancellation."
             ),
             "confidence": "low",
             "citations": [],
@@ -204,7 +204,6 @@ def ask_question(request: AskRequest):
         }
 
     best_score = results[0]["score"]
-
     question_lower = request.question.lower()
     all_evidence_lower = " ".join([item["text"].lower() for item in results])
 
@@ -212,7 +211,6 @@ def ask_question(request: AskRequest):
         "dental",
         "maternity",
         "room rent",
-        "hospital",
         "opd",
         "cashless",
         "ambulance",
@@ -237,11 +235,26 @@ def ask_question(request: AskRequest):
                 "best_score": best_score,
                 "evidence_preview": None
             }
-        
+
+    citations = [
+        {
+            "file_name": item["file_name"],
+            "page_number": item["page_number"],
+            "score": item["score"]
+        }
+        for item in results
+    ]
+
+    evidence_text = "\n\n".join(
+        [
+            f"Page {item['page_number']}: {item['text'][:700]}"
+            for item in results
+        ]
+    )
+
     confidence = "high" if best_score >= 0.45 else "medium"
 
     top_evidence = results[0]["text"][:900]
-    question_lower = request.question.lower()
 
     if "grace period" in question_lower and "premium" in question_lower:
         clean_answer = (
@@ -249,13 +262,13 @@ def ask_question(request: AskRequest):
             "If the premium is still unpaid at the end of the grace period, the policy automatically terminates. "
             "If the Designated Life Insured dies during the grace period before the premium is paid, "
             "the outstanding premium is deducted from the Death Benefit."
-    )
+        )
     else:
         clean_answer = (
             "Based on the uploaded document, the most relevant section says:\n\n"
             f"{top_evidence}\n\n"
             "Please review the cited page for full context."
-    )
+        )
 
     return {
         "status": "success",
