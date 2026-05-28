@@ -15,7 +15,7 @@ from app.rag_store import rag_store
 
 app = FastAPI(
     title="ClaimWise AI Backend",
-    description="FastAPI backend for health insurance claim document processing and RAG retrieval",
+    description="FastAPI backend for health insurance claim document processing and lightweight RAG retrieval",
     version="1.0.0"
 )
 
@@ -105,6 +105,7 @@ def health_check():
 
 @app.post("/upload-pdf", response_model=UploadResponse)
 async def upload_pdf(file: UploadFile = File(...)):
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
@@ -181,6 +182,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
+
     if not request.document_id.strip():
         raise HTTPException(status_code=400, detail="document_id is required")
 
@@ -196,7 +198,10 @@ def ask_question(request: AskRequest):
     if not results:
         return {
             "status": "not_found",
-            "answer": "I could not find relevant information in the uploaded document.",
+            "answer": (
+                "I could not find relevant information in the uploaded document. "
+                "Try asking with words that appear in the document, such as premium, death benefit, grace period, conversion, exchange, beneficiary, or cancellation."
+            ),
             "confidence": "low",
             "citations": [],
             "retrieved_context": [],
@@ -225,7 +230,10 @@ def ask_question(request: AskRequest):
     if best_score < 0.10:
         return {
             "status": "low_confidence",
-            "answer": "I could not find strong evidence for this in the uploaded document. Please review the cited pages or ask a more specific question.",
+            "answer": (
+                "I found some related text, but the evidence is weak. "
+                "Please review the cited evidence or ask a more specific question using wording from the document."
+            ),
             "confidence": "low",
             "citations": citations,
             "retrieved_context": results,
@@ -235,14 +243,17 @@ def ask_question(request: AskRequest):
 
     confidence = "high" if best_score >= 0.45 else "medium"
 
+    top_evidence = results[0]["text"][:900]
+
+    clean_answer = (
+        "Based on the uploaded document, the most relevant section says:\n\n"
+        f"{top_evidence}\n\n"
+        "Please review the cited page for full context."
+    )
+
     return {
         "status": "success",
-        "answer": (
-            "I found relevant information in the uploaded document. "
-            "Please review the evidence and citations below. "
-            "In the next step, this retrieved context will be passed to an LLM "
-            "to generate a natural-language answer grounded only in the document."
-        ),
+        "answer": clean_answer,
         "confidence": confidence,
         "citations": citations,
         "retrieved_context": results,
