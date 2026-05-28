@@ -8,7 +8,7 @@ STOPWORDS = {
     "on", "with", "by", "as", "at", "from", "this", "that", "it", "be",
     "can", "will", "shall", "may", "your", "you", "we", "our", "under",
     "policy", "document", "uploaded", "about", "what", "when", "where",
-    "how", "does", "do", "tell", "me"
+    "how", "does", "do", "tell", "me" "insurance", "coverage", "benefits", "company", "life"
 }
 
 

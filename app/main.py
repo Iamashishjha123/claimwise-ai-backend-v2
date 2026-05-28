@@ -211,36 +211,39 @@ def ask_question(request: AskRequest):
 
     best_score = results[0]["score"]
 
-    citations = [
-        {
-            "file_name": item["file_name"],
-            "page_number": item["page_number"],
-            "score": item["score"]
-        }
-        for item in results
+    question_lower = request.question.lower()
+    all_evidence_lower = " ".join([item["text"].lower() for item in results])
+
+    unsupported_terms = [
+        "dental",
+        "maternity",
+        "room rent",
+        "hospital",
+        "opd",
+        "cashless",
+        "ambulance",
+        "surgery",
+        "medicine",
+        "pharmacy",
+        "diagnostic",
+        "consultation"
     ]
 
-    evidence_text = "\n\n".join(
-        [
-            f"Page {item['page_number']}: {item['text'][:700]}"
-            for item in results
-        ]
-    )
-
-    if best_score < 0.10:
-        return {
-            "status": "low_confidence",
-            "answer": (
-                "I found some related text, but the evidence is weak. "
-                "Please review the cited evidence or ask a more specific question using wording from the document."
-            ),
-            "confidence": "low",
-            "citations": citations,
-            "retrieved_context": results,
-            "best_score": best_score,
-            "evidence_preview": evidence_text
-        }
-
+    for term in unsupported_terms:
+        if term in question_lower and term not in all_evidence_lower:
+            return {
+                "status": "not_found",
+                "answer": (
+                    f"I could not find information about '{term}' in the uploaded document. "
+                    "The document does not appear to mention this topic, so I should not assume coverage."
+                ),
+                "confidence": "low",
+                "citations": [],
+                "retrieved_context": [],
+                "best_score": best_score,
+                "evidence_preview": None
+            }
+        
     confidence = "high" if best_score >= 0.45 else "medium"
 
     top_evidence = results[0]["text"][:900]
